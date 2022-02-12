@@ -79,7 +79,7 @@ def parse_message_body(message_body:dict):
             _force_start_all()
         if 'resume-all' == command:
             _resume_all()
-        if 'resums-one' == command:
+        if 'resume-one' == command:
             _resume_one(data)
         if 'delete-one' == command:
             _delete_file(data)
