@@ -1,0 +1,19 @@
+discord:
+  url:
+
+plex:
+  queue_name:
+  sqs_queue:
+  aws_key_id:
+  aws_secret_id:
+  region:
+
+disk:
+  dl_path:
+  movie_path:
+  tv_path:
+
+qb:
+  host:
+  port:
+  process:

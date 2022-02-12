@@ -7,9 +7,10 @@ verify_ssl = true
 
 [packages]
 requests = "*"
-flask = "*"
 qbittorrent-api = "*"
 waitress = "*"
+boto3 = "*"
+pyyaml = "*"
 
 [requires]
 python_version = "3.8"
