@@ -247,8 +247,8 @@ if __name__ == '__main__':
     queue = sqs.get_queue_by_name(QueueName=cfg["plex"]["queue_name"])
 
     #start the polling loop
+    current_tors = _get_list_of_all()
     while True:
-        current_tors = _get_list_of_all()
         messages_to_delete = []
         # check for new messages
         response = retrieve_command_from_sqs(queue)
@@ -274,12 +274,15 @@ if __name__ == '__main__':
 
         for latest_status in _get_list_of_all():
             for tor in current_tors:
-                # if they match
-                if latest_status["name"] == tor["name"]:
-                    # cehck to see if it is finished
-                    if latest_status["state"] != tor["state"]:
-                        # post to discord about a status change and update the current_tors state
-                        tor["state"] = latest_status["state"]
-                        post_status_change(latest_status)
+                if latest_status in current_tors:
+                    # if they match
+                    if latest_status["name"] == tor["name"]:
+                        # cehck to see if it is finished
+                        if latest_status["state"] != tor["state"]:
+                            # post to discord about a status change and update the current_tors state
+                            tor["state"] = latest_status["state"]
+                            post_status_change(latest_status)
+                    else:
+                        continue
                 else:
-                    continue
+                    current_tors.append(latest_status)
