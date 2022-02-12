@@ -89,12 +89,10 @@ def parse_message_body(message_body:dict):
             _tag_movie(data)
         if 'process-file' == command:
             _process_file(data)
-        payload = {"content": f'Command executed without an exception: {command}'}
     except Exception as e:
         payload = {"content": f'Error running command: {command}\n{e}'}
-
-    r = requests.post(cfg["discord"]["url"], json=payload)
-    print(r.status_code, r.text)
+        r = requests.post(cfg["discord"]["url"], json=payload)
+        print(r.status_code, r.text)
 
 
 def _process_file(hash):
