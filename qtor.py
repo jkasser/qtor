@@ -245,10 +245,10 @@ if __name__ == '__main__':
     )
     # grab the queue object
     queue = sqs.get_queue_by_name(QueueName=cfg["plex"]["queue_name"])
-    current_tors = _get_list_of_all()
 
     #start the polling loop
     while True:
+        current_tors = _get_list_of_all()
         messages_to_delete = []
         # check for new messages
         response = retrieve_command_from_sqs(queue)
