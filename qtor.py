@@ -17,6 +17,12 @@ with open('config.yaml', 'r') as file:
 MOVIES_DIR = 'MOVIE'
 TV_DIR = 'TV'
 
+movie_reg = re.compile(r'.+?(?=\d{4})\d{4}|.+\S.\d{1,3}p.*')
+tv_show_reg = re.compile(r'(?<=\.)S\d{1,2}E\d{1,2}|\d{1,2}of\d{1,2}')
+
+FILE_EXTENSIONS = ('avi', 'mp4', 'mkv', 'srt')
+
+
 def connect():
     try:
         qb = qbittorrentapi.Client(
@@ -95,6 +101,43 @@ def parse_message_body(message_body:dict):
         print(r.status_code, r.text)
 
 
+def delete_extraneous_files(media_path):
+    for sub_file in os.listdir(media_path):
+        if os.path.isfile(media_path + sub_file) and not sub_file.endswith(FILE_EXTENSIONS):
+            # delete all the crap that gets left in these directories except for the file itself
+            os.remove(media_path + sub_file)
+
+
+def get_name_for_subs(media_path):
+    for sub_file in os.listdir(media_path):
+        if sub_file.endswith(FILE_EXTENSIONS):
+            # grab everything but it's extension
+            media_name = '.'.join(sub_file.split('.')[:-1])
+            return media_name
+
+
+def rename_and_move_subs(media_path, media_name):
+    for sub_file in os.listdir(media_path):
+        if os.path.isdir(media_path + sub_file) and 'subs' == sub_file.lower():
+            # process subtitles here
+            for sub in os.listdir(media_path + sub_file):
+                # rename the subs here
+                # rules are
+                # 4 - forced (foreign languages)
+                # 3 - for deaf people (with sounds i.e. "*sigh*")
+                # 2 - normal subtitles
+                # if there is one with _2 in the name, this is all we need, rename it and bail
+                if '3_' in sub.lower():
+                    ext = '.en.cc.ext'
+                elif '4_' in sub.lower():
+                    ext = '.en.forced.ext'
+                else:
+                    ext = '.en.srt'
+                try:
+                    os.rename(media_path + sub_file + '\\' + sub, media_path + media_name + ext)
+                except OSError:
+                    continue
+
 def _process_file(hash):
     DL_DIR = cfg["disk"]["dl_path"]
     movie_dir = cfg["disk"]["movie_path"]
@@ -103,36 +146,33 @@ def _process_file(hash):
         tor = _get_file_by_hash(hash)[0]
         name = tor["name"]
         tag = tor["tags"]
-        stuff = re.compile(r'.+?(?=\d{4})\d{4}|.+\S.\d{1,3}p.*')
 
         for movie in os.listdir(DL_DIR):
             # only rename files that have been tagged so we know where to put them
             if str(movie) == name and tag != "":
                 try:
-                    movie_name = stuff.search(movie).group()
-                    if movie_name is not None:
-                        new_file = DL_DIR + ' '.join(movie_name.split('.'))
-                        os.rename(DL_DIR + movie, new_file)
-                        for file in os.listdir(new_file):
-                            # move subtitles out to the parent folder
-                            if 'subs' in file.lower():
-                                sub_dir = new_file + '\\' + file
-                                for sub in os.listdir(sub_dir):
-                                    os.rename(sub_dir + '\\' + sub, new_file + '\\' + sub)
-                                os.rmdir(sub_dir)
-                            if 'RARBG' in str(file):
-                                if file.endswith('.exe') or file.endswith('.txt'):
-                                    os.remove(new_file + f'/{file}')
-                            if file.endswith('nfo'):
-                                os.remove(new_file + f'/{file}')
-                        # now move it to the new location
-                        if tag == 'movie':
-                            new_path = movie_dir
-                            shutil.move(new_file, new_path)
-                        elif tag == 'tv':
-                            new_path = tv_dir
-                            shutil.move(new_file, new_path)
+                    if os.path.isdir(DL_DIR + movie):
+                        if re.search(tv_show_reg, movie) is not None:
+                            # rename the new folder
+                            new_name = ' '.join(movie.split('.')[:-2])
+                            os.rename(DL_DIR + movie, DL_DIR + new_name)
 
+                        if re.search(movie_reg, movie) is not None:
+                            # rename the new folder
+                            new_name = ' '.join(movie.split('.')[:2])
+                            os.rename(DL_DIR + movie, DL_DIR + new_name)
+
+                        sub_dir = DL_DIR + new_name + '\\'
+                        delete_extraneous_files(sub_dir)
+                        media_name = get_name_for_subs(sub_dir)
+                        rename_and_move_subs(sub_dir, media_name)
+                    # now move it to the new location
+                    if tag == 'movie':
+                        new_path = movie_dir
+                        shutil.move(DL_DIR+new_name, new_path)
+                    elif tag == 'tv':
+                        new_path = tv_dir
+                        shutil.move(DL_DIR+new_name, new_path)
                 except Exception as e:
                     print(e)
                     continue
