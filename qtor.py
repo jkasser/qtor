@@ -113,30 +113,49 @@ def get_name_for_subs(media_path):
         if sub_file.endswith(FILE_EXTENSIONS):
             # grab everything but it's extension
             media_name = '.'.join(sub_file.split('.')[:-1])
-            return media_name
+            rename_and_move_subs(media_path, media_name)
 
 
 def rename_and_move_subs(media_path, media_name):
     for sub_file in os.listdir(media_path):
         if os.path.isdir(media_path + sub_file) and 'subs' == sub_file.lower():
-            # process subtitles here
             for sub in os.listdir(media_path + sub_file):
-                # rename the subs here
-                # rules are
-                # 4 - forced (foreign languages)
-                # 3 - for deaf people (with sounds i.e. "*sigh*")
-                # 2 - normal subtitles
-                # if there is one with _2 in the name, this is all we need, rename it and bail
-                if '3_' in sub.lower():
-                    ext = '.en.cc.ext'
-                elif '4_' in sub.lower():
-                    ext = '.en.forced.ext'
-                else:
-                    ext = '.en.srt'
-                try:
-                    os.rename(media_path + sub_file + '\\' + sub, media_path + media_name + ext)
-                except OSError:
-                    continue
+                # sometimes subtitles are individual files
+                if os.path.isfile(media_path + sub_file + '\\' + sub):
+                    # rename the subs here
+                    # rules are
+                    # 4 - forced (foreign languages)
+                    # 3 - for deaf people (with sounds i.e. "*sigh*")
+                    # 2 - normal subtitles
+                    # if there is one with _2 in the name, this is all we need, rename it and bail
+                    if '3_English' in sub:
+                        ext = '.en.cc.ext'
+                    elif '4_English' in sub.lower():
+                        ext = '.en.forced.ext'
+                    elif 'English' in sub.lower():
+                        ext = '.en.srt'
+                    else:
+                        continue
+                    try:
+                        os.rename(media_path + sub_file + '\\' + sub, media_path + media_name + ext)
+                    except OSError:
+                        continue
+                #other times, like tv shows there are sub folders in the subs directory
+                elif os.path.isdir(media_path + sub_file + '\\' + sub):
+                    for sub_folder_file in os.listdir(media_path + sub_file + '\\' + sub):
+                        if '3_English' in sub_folder_file:
+                            ext = '.en.cc.ext'
+                        elif '4_English' in sub_folder_file:
+                            ext = '.en.forced.ext'
+                        elif 'English' in sub_folder_file:
+                            ext = '.en.srt'
+                        else:
+                            continue
+                        try:
+                            os.rename(media_path + sub_file + '\\' + sub + '\\' + sub_folder_file, media_path + sub + ext)
+                        except OSError:
+                            continue
+
 
 def _process_file(hash):
     DL_DIR = cfg["disk"]["dl_path"]
@@ -164,8 +183,7 @@ def _process_file(hash):
 
                         sub_dir = DL_DIR + new_name + '\\'
                         delete_extraneous_files(sub_dir)
-                        media_name = get_name_for_subs(sub_dir)
-                        rename_and_move_subs(sub_dir, media_name)
+                        get_name_for_subs(sub_dir)
                     # now move it to the new location
                     if tag == 'movie':
                         new_path = movie_dir
