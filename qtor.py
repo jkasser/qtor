@@ -340,6 +340,8 @@ if __name__ == '__main__':
                             # post to discord about a status change and update the current_tors state
                             tor["state"] = latest_status["state"]
                             post_status_change(latest_status)
+                            # stop the spam and break out so we can re-declare latest_status
+                            break
                     else:
                         continue
                 else:
