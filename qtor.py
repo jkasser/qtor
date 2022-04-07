@@ -304,9 +304,9 @@ if __name__ == '__main__':
     # grab the queue object
     queue = sqs.get_queue_by_name(QueueName=cfg["plex"]["queue_name"])
 
-    #start the polling loop
-    current_tors = _get_list_of_all()
+    # start the polling loop
     while True:
+        current_tors = _get_list_of_all()
         messages_to_delete = []
         # check for new messages
         response = retrieve_command_from_sqs(queue)
@@ -335,7 +335,7 @@ if __name__ == '__main__':
                 if latest_status in current_tors:
                     # if they match
                     if latest_status["name"] == tor["name"]:
-                        # cehck to see if it is finished
+                        # check to see if it is finished
                         if latest_status["state"] != tor["state"]:
                             # post to discord about a status change and update the current_tors state
                             tor["state"] = latest_status["state"]
