@@ -178,7 +178,7 @@ def _process_file(hash):
 
                         if re.search(movie_reg, movie) is not None:
                             # rename the new folder
-                            new_name = ' '.join(movie.split('.')[:2])
+                            new_name = re.search(r'.+(?=\.1080p)', movie).group().replace('.', ' ')
                             os.rename(DL_DIR + movie, DL_DIR + new_name)
 
                         sub_dir = DL_DIR + new_name + '\\'
