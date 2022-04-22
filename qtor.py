@@ -112,11 +112,10 @@ def get_name_for_subs(media_path):
     for sub_file in os.listdir(media_path):
         if sub_file.endswith(FILE_EXTENSIONS):
             # grab everything but it's extension
-            media_name = '.'.join(sub_file.split('.')[:-1])
-            rename_and_move_subs(media_path, media_name)
+            rename_and_move_subs(media_path)
 
 
-def rename_and_move_subs(media_path, media_name):
+def rename_and_move_subs(media_path):
     for sub_file in os.listdir(media_path):
         if os.path.isdir(media_path + sub_file) and 'subs' == sub_file.lower():
             for sub in os.listdir(media_path + sub_file):
@@ -128,16 +127,15 @@ def rename_and_move_subs(media_path, media_name):
                     # 3 - for deaf people (with sounds i.e. "*sigh*")
                     # 2 - normal subtitles
                     # if there is one with _2 in the name, this is all we need, rename it and bail
+                    ext = ''
                     if '3_English' in sub:
                         ext = '.en.cc.ext'
                     elif '4_English' in sub.lower():
                         ext = '.en.forced.ext'
                     elif 'English' in sub.lower():
                         ext = '.en.srt'
-                    else:
-                        continue
                     try:
-                        os.rename(media_path + sub_file + '\\' + sub, media_path + media_name + ext)
+                        os.rename(media_path + sub_file + "\\" + sub, media_path + "\\" + sub + ext)
                     except OSError:
                         continue
                 #other times, like tv shows there are sub folders in the subs directory
