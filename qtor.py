@@ -169,15 +169,16 @@ def _process_file(hash):
             if str(movie) == name and tag != "":
                 try:
                     if os.path.isdir(DL_DIR + movie):
-                        if re.search(tv_show_reg, movie) is not None:
-                            # rename the new folder
-                            new_name = ' '.join(movie.split('.')[:-2])
-                            os.rename(DL_DIR + movie, DL_DIR + new_name)
+                        if ' ' not in movie:
+                            if re.search(tv_show_reg, movie) is not None:
+                                # rename the new folder
+                                new_name = ' '.join(movie.split('.')[:-2])
+                                os.rename(DL_DIR + movie, DL_DIR + new_name)
 
-                        if re.search(movie_reg, movie) is not None:
-                            # rename the new folder
-                            new_name = re.search(r'.+(?=\.1080p)', movie).group().replace('.', ' ')
-                            os.rename(DL_DIR + movie, DL_DIR + new_name)
+                            if re.search(movie_reg, movie) is not None:
+                                # rename the new folder
+                                new_name = re.search(r'.+(?=\.1080p)', movie).group().replace('.', ' ')
+                                os.rename(DL_DIR + movie, DL_DIR + new_name)
 
                         sub_dir = DL_DIR + new_name + '\\'
                         delete_extraneous_files(sub_dir)
