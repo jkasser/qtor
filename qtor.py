@@ -283,7 +283,7 @@ def _format_tor_message(tor: dict):
                         f'**Size**: {get_human_sizes(tor["size"])}\n' \
                         f'**Left to DL**: {get_human_sizes(tor["amount_left"])}\n'\
                         f'**ETA**: {datetime.timedelta(seconds=int(tor["eta"]))}\n'\
-                        f'**Progress**: {tor["progress"]}%\n'\
+                        f'**Progress**: {round(float(tor["progress"][:3]))}%\n'\
                         f'**Tags**: {tor["tags"]}\n'
     return formatted_message
 
