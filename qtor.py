@@ -24,6 +24,9 @@ tv_show_reg = re.compile(r'(?<=\.)S\d{1,2}E\d{1,2}|\d{1,2}of\d{1,2}')
 FILE_EXTENSIONS = ('avi', 'mp4', 'mkv', 'srt')
 
 
+processed_tors = {}
+
+
 def connect():
     try:
         qb = qbittorrentapi.Client(
@@ -215,7 +218,7 @@ def _get_list_of_all():
                 "amount_left": tor["amount_left"],
                 "tags": tor["tags"],
                 "size": tor["size"],
-                "eta": tor["eta"]
+                "eta": tor["eta"],
             }
         )
         if tor.state_enum.is_complete and not tor.state_enum.is_paused:
@@ -349,10 +352,12 @@ if __name__ == '__main__':
 
         for latest_status in _get_list_of_all():
             # if the state is pausedUp
-            if latest_status["state"] == "pausedUP" and latest_status["tags"] != "":
+            if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
                 # file is completed, start processing it
                 post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.')
                 _process_file(latest_status["hash"])
-            elif latest_status["state"] == "pausedUP" and latest_status["tags"] == "":
+                # set processed to false so it doesn't alert more than once
+                processed_tors[latest_status["hash"]] = True
+            elif latest_status["state"] == "pausedUP" and latest_status["tags"] == "" and processed_tors[latest_status["hash"]] is False:
                 post_msg_to_disc(f'File: {latest_status["name"]} has completed but has not been tagged.'
                                  f' Please tag it before it can be processed.')
