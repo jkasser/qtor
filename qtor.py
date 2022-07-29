@@ -213,7 +213,7 @@ def _get_list_of_all():
             {
                 "hash": tor["hash"],
                 "name": tor["name"],
-                "progress": f'{tor["progress"]}%',
+                "progress": f'{tor["progress"]}',
                 "state": tor["state"],
                 "amount_left": tor["amount_left"],
                 "tags": tor["tags"],
