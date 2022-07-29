@@ -351,6 +351,8 @@ if __name__ == '__main__':
                     Entries=messages_to_delete)
 
         for latest_status in _get_list_of_all():
+            if latest_status["hash"] not in processed_tors.keys():
+                processed_tors[latest_status["hash"]] = False
             # if the state is pausedUp
             if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
                 # file is completed, start processing it
@@ -358,6 +360,6 @@ if __name__ == '__main__':
                 _process_file(latest_status["hash"])
                 # set processed to false so it doesn't alert more than once
                 processed_tors[latest_status["hash"]] = True
-            elif latest_status["state"] == "pausedUP" and latest_status["tags"] == "" and processed_tors[latest_status["hash"]] is False:
-                post_msg_to_disc(f'File: {latest_status["name"]} has completed but has not been tagged.'
-                                 f' Please tag it before it can be processed.')
+            # elif latest_status["state"] == "pausedUP" and latest_status["tags"] == "" and processed_tors[latest_status["hash"]] is False:
+            #     post_msg_to_disc(f'File: {latest_status["name"]} has completed but has not been tagged.'
+            #                      f' Please tag it before it can be processed.')
