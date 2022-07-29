@@ -7,6 +7,7 @@ import yaml
 import re
 import shutil
 import json
+import datetime
 
 
 # get values from the yaml file
@@ -209,11 +210,12 @@ def _get_list_of_all():
             {
                 "hash": tor["hash"],
                 "name": tor["name"],
-                "progress": tor["progress"],
-                "completed": bool(tor["completed"]),
+                "progress": f'{tor["progress"]}%',
                 "state": tor["state"],
                 "amount_left": tor["amount_left"],
-                "tags": tor["tags"]
+                "tags": tor["tags"],
+                "size": tor["size"],
+                "eta": tor["eta"]
             }
         )
         if tor.state_enum.is_complete and not tor.state_enum.is_paused:
@@ -261,13 +263,34 @@ def _resume_one(hash):
     return qb.torrents.resume(torrent_hashes=hash)
 
 
+def get_human_sizes(nbytes):
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
+
+
+def _format_tor_message(tor: dict):
+    formatted_message = f'**Hash**: {tor["hash"]}\n'\
+                        f'**Name**: {tor["name"].capitalize()}\n'\
+                        f'**State**: {tor["state"]}\n' \
+                        f'**Size**: {get_human_sizes(tor["size"])}\n' \
+                        f'**Left to DL**: {get_human_sizes(tor["amount_left"])}\n'\
+                        f'**ETA**: {datetime.timedelta(seconds=int(tor["eta"]))}\n'\
+                        f'**Progress**: {tor["progress"]}%\n'\
+                        f'**Tags**: {tor["tags"]}\n'
+    return formatted_message
+
+
 def get_tor_list():
     tor_list = _get_list_of_all()
     formatted_message = []
     for tor in tor_list:
         formatted_message.append(
-            f'**Hash**: {tor["hash"]}\n**Name**: {tor["name"].capitalize()}\n**Completed**: {tor["completed"]}\n'
-            f'**State**: {tor["state"]}\n**Left to DL**: {tor["amount_left"]}\n**Tags**: {tor["tags"]}\n'
+            _format_tor_message(tor)
         )
     payload = {
         "content": "\n".join(formatted_message)
@@ -276,12 +299,8 @@ def get_tor_list():
     print(r.status_code)
 
 
-def post_status_change(tor:dict):
-    payload = {
-        "content": "**Status Change!**\n"
-        f'**Hash**: {tor["hash"]}\n**Name**: {tor["name"].capitalize()}\n**Completed**: {tor["completed"]}\n'
-        f'**State**: {tor["state"]}\n**Left to DL**: {tor["amount_left"]}\n**Tags**: {tor["tags"]}\n'
-    }
+def post_msg_to_disc(msg):
+    payload = {"content": msg}
     r = requests.post(cfg["discord"]["url"], json=payload)
     print(r.status_code)
 
@@ -305,7 +324,6 @@ if __name__ == '__main__':
 
     # start the polling loop
     while True:
-        current_tors = _get_list_of_all()
         messages_to_delete = []
         # check for new messages
         response = retrieve_command_from_sqs(queue)
@@ -330,18 +348,11 @@ if __name__ == '__main__':
                     Entries=messages_to_delete)
 
         for latest_status in _get_list_of_all():
-            for tor in current_tors:
-                if latest_status in current_tors:
-                    # if they match
-                    if latest_status["name"] == tor["name"]:
-                        # check to see if it is finished
-                        if latest_status["state"] != tor["state"]:
-                            # post to discord about a status change and update the current_tors state
-                            tor["state"] = latest_status["state"]
-                            post_status_change(latest_status)
-                            # stop the spam and break out so we can re-declare latest_status
-                            break
-                    else:
-                        continue
-                else:
-                    current_tors.append(latest_status)
+            # if the state is pausedUp
+            if latest_status["state"] == "pausedUP" and latest_status["tags"] != "":
+                # file is completed, start processing it
+                post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.')
+                _process_file(latest_status["hash"])
+            elif latest_status["state"] == "pausedUP" and latest_status["tags"] == "":
+                post_msg_to_disc(f'File: {latest_status["name"]} has completed but has not been tagged.'
+                                 f' Please tag it before it can be processed.')
