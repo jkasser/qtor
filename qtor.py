@@ -277,13 +277,17 @@ def get_human_sizes(nbytes):
 
 
 def _format_tor_message(tor: dict):
+    try:
+        progress = round(float(tor["progress"] * 100), 2)
+    except:
+        progress = int(tor["progress"].split('.')[0])
     formatted_message = f'**Hash**: {tor["hash"]}\n'\
                         f'**Name**: {tor["name"].capitalize()}\n'\
                         f'**State**: {tor["state"]}\n' \
                         f'**Size**: {get_human_sizes(tor["size"])}\n' \
                         f'**Left to DL**: {get_human_sizes(tor["amount_left"])}\n'\
                         f'**ETA**: {datetime.timedelta(seconds=int(tor["eta"]))}\n'\
-                        f'**Progress**: {round(float(tor["progress"] * 100), 2)}%\n'\
+                        f'**Progress**: {progress}%\n'\
                         f'**Tags**: {tor["tags"]}\n'
     return formatted_message
 
