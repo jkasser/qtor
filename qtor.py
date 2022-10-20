@@ -302,10 +302,28 @@ def get_tor_list():
     payload = {
         "content": "\n".join(formatted_message)
     }
-    if payload["content"] == '':
-        payload["content"] = 'There are no active Torrents!'
-    r = requests.post(cfg["discord"]["url"], json=payload)
-    print(r.status_code, r.text)
+    # make sure we only send 2000 chars at a time which is the max for discord
+    if len(payload["content"]) >= 2000:
+        pieces = payload["content"].split('\n')
+        segmented_message = ""
+        for piece in pieces:
+            # print(f'length of next segment is {len(piece)}')
+            if len(segmented_message) + len(piece) < 2000:
+                segmented_message += piece
+                # print(f'length of segmented message is now: {len(segmented_message)}')
+            else:
+                # print(f'length would have been too long!')
+                payload = {"content": "\n".join(segmented_message)}
+                r = requests.post(cfg["discord"]["url"], json=payload)
+                print(r.status_code, r.text)
+                # print(f'we would have sent {len(payload["content"])}')
+                segmented_message = piece
+    # if it's less than the regular checks will suffice
+    else:
+        if payload["content"] == '':
+            payload["content"] = 'There are no active Torrents!'
+        r = requests.post(cfg["discord"]["url"], json=payload)
+        print(r.status_code, r.text)
 
 
 def post_msg_to_disc(msg):
