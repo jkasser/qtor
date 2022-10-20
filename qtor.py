@@ -43,7 +43,7 @@ def retrieve_command_from_sqs(queue):
         QueueUrl=cfg["plex"]["sqs_queue"],
         AttributeNames=['ALL'],
         MaxNumberOfMessages=1,
-        VisibilityTimeout=5,
+        VisibilityTimeout=30,
         WaitTimeSeconds=5,
         MessageAttributeNames=['ALL']
     )
@@ -302,8 +302,10 @@ def get_tor_list():
     payload = {
         "content": "\n".join(formatted_message)
     }
+    if payload["content"] == '':
+        payload["content"] = 'There are no active Torrents!'
     r = requests.post(cfg["discord"]["url"], json=payload)
-    print(r.status_code)
+    print(r.status_code, r.text)
 
 
 def post_msg_to_disc(msg):
