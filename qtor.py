@@ -19,7 +19,7 @@ MOVIES_DIR = 'MOVIE'
 TV_DIR = 'TV'
 
 movie_reg = re.compile(r'.+?(?=\d{4})\d{4}|.+\S.\d{1,3}p.*')
-tv_show_reg = re.compile(r'(?<=\.)S\d{1,2}|\d{1,2}of\d{1,2|\d{1,2}OF\d{1,2}')
+tv_show_reg = re.compile(r'(?<=\.)[Ss]\d{1,2}|\d{1,2}[ofOF]+\d{1,2}')
 
 FILE_EXTENSIONS = ('avi', 'mp4', 'mkv', 'srt')
 
