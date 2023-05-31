@@ -8,7 +8,20 @@ import re
 import shutil
 import json
 import datetime
+import logging
+from logging.handlers import RotatingFileHandler
 
+
+log_file = os.path.expandvars("%USERPROFILE%\Desktop\qtor.log")
+logging.basicConfig(filename=log_file,
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
+
+logger = logging.getLogger('QTOR')
+handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=1)
+logger.addHandler(handler)
 
 # get values from the yaml file
 with open('config.yaml', 'r') as file:
@@ -34,7 +47,7 @@ def connect():
             port=cfg["qb"]["port"],
         )
     except Exception as e:
-        print('We blew up here!', e)
+        logger.error('We blew up here!', e)
     return qb
 
 
@@ -59,10 +72,10 @@ def check_and_start_process():
     # because Fail message could be translated
     try:
         if last_line.lower().startswith(f'{cfg["qb"]["process"]}'.lower()):
-            print('Tor is up and running!')
+            logger.info('Tor is up and running!')
             return True
         else:
-            print('Program is not running, starting it now!')
+            logger.info('Program is not running, starting it now!')
             subprocess.Popen(f'C:\\Program Files\\{cfg["qb"]["process"].split(".")[0]}\\{cfg["qb"]["process"]}')
             return True
     except:
@@ -72,6 +85,7 @@ def check_and_start_process():
 def parse_message_body(message_body:dict):
     command = message_body["command"].lower()
     data = message_body["data"]
+    logger.info(f"Received command: {command}")
     try:
         if 'get-all' == command:
             get_tor_list()
@@ -99,17 +113,22 @@ def parse_message_body(message_body:dict):
             _tag_movie(data)
         if 'process-file' == command:
             _process_file(data)
+        if 'get-logs' == command:
+            _send_logs()
     except Exception as e:
         payload = {"content": f'Error running command: {command}\n{e}'}
         r = requests.post(cfg["discord"]["url"], json=payload)
-        print(r.status_code, r.text)
+        logger.error("Error processing command.", r.status_code, r.text)
 
 
 def delete_extraneous_files(media_path):
+    count = 0
     for sub_file in os.listdir(media_path):
         if os.path.isfile(media_path + sub_file) and not sub_file.endswith(FILE_EXTENSIONS):
             # delete all the crap that gets left in these directories except for the file itself
+            count +=1
             os.remove(media_path + sub_file)
+    logger.info(f"Deleted {count} file(s).")
 
 
 def get_name_for_subs(media_path):
@@ -125,6 +144,7 @@ def rename_and_move_subs(media_path):
             for sub in os.listdir(media_path + sub_file):
                 # sometimes subtitles are individual files
                 if os.path.isfile(media_path + sub_file + '\\' + sub):
+
                     # rename the subs here
                     # rules are
                     # 4 - forced (foreign languages)
@@ -139,8 +159,13 @@ def rename_and_move_subs(media_path):
                     elif 'English' in sub.lower():
                         ext = '.en.srt'
                     try:
+                        logger.info(
+                            f"Attempting to rename sub file {media_path}{sub_file}\\{sub} to:\n "
+                            f"{media_path}\\{sub}{ext}"
+                        )
                         os.rename(media_path + sub_file + "\\" + sub, media_path + "\\" + sub + ext)
-                    except OSError:
+                    except OSError as e:
+                        logger.error(f"Ran into error processing sub file: {e}")
                         continue
                 #other times, like tv shows there are sub folders in the subs directory
                 elif os.path.isdir(media_path + sub_file + '\\' + sub):
@@ -154,8 +179,14 @@ def rename_and_move_subs(media_path):
                         else:
                             continue
                         try:
-                            os.rename(media_path + sub_file + '\\' + sub + '\\' + sub_folder_file, media_path + sub + ext)
-                        except OSError:
+                            os.rename(
+                                media_path + sub_file + '\\' + sub + '\\' + sub_folder_file, media_path + sub + ext)
+                            logger.info(
+                                f"Attempting to rename sub file {media_path}{sub_file}\\{sub}\\{sub_folder_file} to:\n "
+                                f"{media_path}{sub}{ext}"
+                            )
+                        except OSError as e:
+                            logger.error(f"Ran into error processing sub file: {e}")
                             continue
 
 
@@ -175,13 +206,17 @@ def _process_file(hash):
                     if os.path.isdir(DL_DIR + movie):
                         if ' ' not in movie:
                             if re.search(tv_show_reg, movie) is not None:
+                                logger.info("File matches tv regex!")
                                 # rename the new folder
                                 new_name = ' '.join(movie.split('.')[:-2])
+                                logger.info(f"Renaming file to {new_name}")
                                 os.rename(DL_DIR + movie, DL_DIR + new_name)
 
                             if re.search(movie_reg, movie) is not None:
                                 # rename the new folder
+                                logger.info("File matches movie regex!")
                                 new_name = re.search(r'.+(?=\.1080p)', movie).group().replace('.', ' ')
+                                logger.info(f"Renaming file to {new_name}")
                                 os.rename(DL_DIR + movie, DL_DIR + new_name)
 
                         sub_dir = DL_DIR + new_name + '\\'
@@ -189,13 +224,16 @@ def _process_file(hash):
                         get_name_for_subs(sub_dir)
                     # now move it to the new location
                     if tag == 'movie':
+                        logger.info(f"File was tagged as {tag}.")
                         new_path = movie_dir
                         shutil.move(DL_DIR+new_name, new_path)
                     elif tag == 'tv':
+                        logger.info(f"File was tagged as {tag}.")
                         new_path = tv_dir
+                        logger.info(f"Moving file to {new_path}")
                         shutil.move(DL_DIR+new_name, new_path)
                 except Exception as e:
-                    print(e)
+                    logger.info(f"Encountered exception! {e}")
                     continue
     except Exception as e:
         return e
@@ -207,6 +245,7 @@ def _get_file_by_hash(hash):
 
 def _get_list_of_all():
     # retrieve and show all torrents
+    logger.info("Getting list of all tors.")
     torrent_list = []
     for tor in qb.torrents_info():
         torrent_list.append(
@@ -315,7 +354,7 @@ def get_tor_list():
                 # print(f'length would have been too long!')
                 payload = {"content": "\n".join(segmented_message)}
                 r = requests.post(cfg["discord"]["url"], json=payload)
-                print(r.status_code, r.text)
+                logger.info("Sent message to discord!", r.status_code, r.text)
                 # print(f'we would have sent {len(payload["content"])}')
                 segmented_message = piece
     # if it's less than the regular checks will suffice
@@ -323,22 +362,39 @@ def get_tor_list():
         if payload["content"] == '':
             payload["content"] = 'There are no active Torrents!'
         r = requests.post(cfg["discord"]["url"], json=payload)
-        print(r.status_code, r.text)
+        logger.info(f"Sent message to discord! {payload['content']} with response: {r.status_code}")
 
 
 def post_msg_to_disc(msg):
     payload = {"content": msg}
     r = requests.post(cfg["discord"]["url"], json=payload)
-    print(r.status_code)
+    logger.info(f"Sending message to discord: {msg} with response {r.status_code}")
+
+
+def _send_logs():
+    log_file = os.path.expandvars("%USERPROFILE%\Desktop\qtor.log")
+    files = {
+        'file': open(log_file, 'rb')
+    }
+    logger.info("Sending log file to discord.")
+    r = requests.post(
+        cfg["discord"]["url"],
+        files=files,
+        json={"content": "Latest Log!", "tts": False}
+    )
+    logger.info(f"Log post result {r.status_code}")
 
 
 if __name__ == '__main__':
     files_to_be_processed = []
     # Instantiate everything we need
     # start the application
+    logger.info("Starting QTOR")
     check_and_start_process()
     # connect to the process
+    logger.info("Connecting to processes...")
     qb = connect()
+    logger.info("Creating SQS object...")
     # create our sqs object
     sqs = boto3.resource(
         'sqs',
@@ -350,16 +406,17 @@ if __name__ == '__main__':
     queue = sqs.get_queue_by_name(QueueName=cfg["plex"]["queue_name"])
 
     # start the polling loop
+    logger.info("Starting polling now!")
     while True:
         messages_to_delete = []
         # check for new messages
         response = retrieve_command_from_sqs(queue)
         # if we have a response
         for message in response:
+            logger.info("New message from SQS!")
             # parse the response of message.body here
             body = json.loads(message.body)
             parse_message_body(body)
-
             messages_to_delete.append({
                 'Id': message.message_id,
                 'ReceiptHandle': message.receipt_handle
@@ -380,6 +437,7 @@ if __name__ == '__main__':
             # if the state is pausedUp
             if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
                 # file is completed, start processing it
+                logger.info("File has completed, automatically processing.")
                 post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.')
                 _process_file(latest_status["hash"])
                 # set processed to false so it doesn't alert more than once
