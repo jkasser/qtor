@@ -14,7 +14,7 @@ from logging.handlers import RotatingFileHandler
 
 log_file = os.path.expandvars("%USERPROFILE%\Desktop\qtor.log")
 logging.basicConfig(filename=log_file,
-                    filemode='a',
+                    filemode='w',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                     datefmt='%H:%M:%S',
                     level=logging.DEBUG)
