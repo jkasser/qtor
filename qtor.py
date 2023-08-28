@@ -1,6 +1,7 @@
 import qbittorrentapi
 import requests
 import os
+import sys
 import boto3
 import subprocess
 import yaml
@@ -13,15 +14,13 @@ from logging.handlers import RotatingFileHandler
 
 
 log_file = os.path.expandvars("%USERPROFILE%\Desktop\qtor.log")
-logging.basicConfig(filename=log_file,
-                    filemode='a',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S',
-                    level=logging.DEBUG)
-
-logger = logging.getLogger('QTOR')
-handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=1)
+logger = logging.getLogger(__name__)
+handler = RotatingFileHandler(log_file, maxBytes=1024**2, backupCount=2)
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
+handler.setFormatter(formatter)
 logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 
 # get values from the yaml file
 with open('config.yaml', 'r') as file:
