@@ -14,7 +14,7 @@ from logging.handlers import RotatingFileHandler
 
 
 log_file = os.path.expandvars("%USERPROFILE%\Desktop\qtor.log")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('QTOR')
 handler = RotatingFileHandler(log_file, maxBytes=1024**2, backupCount=2)
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
 handler.setFormatter(formatter)
