@@ -130,6 +130,55 @@ def delete_extraneous_files(media_path):
     logger.info(f"Deleted {count} file(s).")
 
 
+def rename_file_for_plex(dl_dir, movie):
+    resolution_regx = r"\d{3,4}p"
+    season_regx = r"[Ss]eason[\s\.]\d{1,2}|[Ss]\d{1,2}"
+    title_regx = r"^\D+(?=\.)|^[^\.(]+"
+    year_regx = r"(19|20)\d{2}(?!p)"
+
+    title_match = False
+    season_match = False
+    resolution_match = False
+    year_match = False
+
+    new_file_name = ""
+    if re.search(title_regx, movie) is not None:
+        file_title = re.search(title_regx, movie).group()
+        title_match = True
+        new_file_name += str(file_title).strip().replace(" ", ".")
+    if re.search(season_regx, movie) is not None:
+        file_season = re.search(season_regx, movie).group()
+        season_match = True
+        if "season" in file_season.lower():
+            file_season = file_season.lower().replace("season", "S").replace(" ", "").replace(".", "")
+        # re.sub("\d{1}", "")
+        if new_file_name[-1] != ".":
+            new_file_name += "."
+        new_file_name += file_season.strip().replace(" ", "")
+    if re.search(year_regx, movie) is not None:
+        file_year = re.search(year_regx, movie).group()
+        year_match = True
+        if new_file_name[-1] != ".":
+            new_file_name += "."
+        new_file_name += file_year.strip().replace(" ", ".")
+    if re.search(resolution_regx, movie) is not None:
+        file_resolution = re.search(resolution_regx, movie).group()
+        resolution_match = True
+        if new_file_name[-1] != ".":
+            new_file_name += "."
+        new_file_name += file_resolution.strip().replace(" ", ".")
+    os.rename(dl_dir + movie, dl_dir + new_file_name)
+    print(
+        f"Renaming finished."
+        f"\nTitle Match: {title_match}"
+        f"\nSeason Match: {season_match}"
+        f"\nFile Year Match: {year_match}"
+        f"\nFile Resolution Match: {resolution_match}"
+        f"\nNew Name: {new_file_name}"
+    )
+    return new_file_name
+
+
 def get_name_for_subs(media_path):
     for sub_file in os.listdir(media_path):
         if sub_file.endswith(FILE_EXTENSIONS):
@@ -203,34 +252,21 @@ def _process_file(hash):
             if str(movie) == name and tag != "":
                 try:
                     if os.path.isdir(DL_DIR + movie):
-                        if ' ' not in movie:
-                            if re.search(tv_show_reg, movie) is not None:
-                                logger.info("File matches tv regex!")
-                                # rename the new folder
-                                new_name = ' '.join(movie.split('.')[:-2])
-                                logger.info(f"Renaming file to {new_name}")
-                                os.rename(DL_DIR + movie, DL_DIR + new_name)
-
-                            if re.search(movie_reg, movie) is not None:
-                                # rename the new folder
-                                logger.info("File matches movie regex!")
-                                new_name = re.search(r'.+(?=\.1080p)', movie).group().replace('.', ' ')
-                                logger.info(f"Renaming file to {new_name}")
-                                os.rename(DL_DIR + movie, DL_DIR + new_name)
-
+                        new_name = rename_file_for_plex(movie)
                         sub_dir = DL_DIR + new_name + '\\'
                         delete_extraneous_files(sub_dir)
                         get_name_for_subs(sub_dir)
+                    else:
+                        new_name = movie
                     # now move it to the new location
                     if tag == 'movie':
                         logger.info(f"File was tagged as {tag}.")
-                        new_path = movie_dir
-                        shutil.move(DL_DIR+new_name, new_path)
+                        logger.info(f"Moving file to {movie_dir}")
+                        shutil.move(DL_DIR+new_name, movie_dir)
                     elif tag == 'tv':
                         logger.info(f"File was tagged as {tag}.")
-                        new_path = tv_dir
-                        logger.info(f"Moving file to {new_path}")
-                        shutil.move(DL_DIR+new_name, new_path)
+                        logger.info(f"Moving file to {tv_dir}")
+                        shutil.move(DL_DIR+new_name, tv_dir)
                 except Exception as e:
                     logger.info(f"Encountered exception! {e}")
                     continue
@@ -244,7 +280,7 @@ def _get_file_by_hash(hash):
 
 def _get_list_of_all():
     # retrieve and show all torrents
-    logger.info("Getting list of all tors.")
+    # logger.info("Getting list of all tors.")
     torrent_list = []
     for tor in qb.torrents_info():
         torrent_list.append(
@@ -345,16 +381,16 @@ def get_tor_list():
         pieces = payload["content"].split('\n')
         segmented_message = ""
         for piece in pieces:
-            # print(f'length of next segment is {len(piece)}')
+            # logger.info(f'length of next segment is {len(piece)}')
             if len(segmented_message) + len(piece) < 2000:
                 segmented_message += piece
-                # print(f'length of segmented message is now: {len(segmented_message)}')
+                # logger.info(f'length of segmented message is now: {len(segmented_message)}')
             else:
-                # print(f'length would have been too long!')
+                # logger.info(f'length would have been too long!')
                 payload = {"content": "\n".join(segmented_message)}
                 r = requests.post(cfg["discord"]["url"], json=payload)
                 logger.info("Sent message to discord!", r.status_code, r.text)
-                # print(f'we would have sent {len(payload["content"])}')
+                # logger.info(f'we would have sent {len(payload["content"])}')
                 segmented_message = piece
     # if it's less than the regular checks will suffice
     else:
