@@ -249,7 +249,7 @@ def _process_file(hash):
 
         for movie in os.listdir(DL_DIR):
             # only rename files that have been tagged so we know where to put them
-            if str(movie) == name and tag != "":
+            if str(name) in movie and tag != "":
                 try:
                     if os.path.isdir(DL_DIR + movie):
                         new_name = rename_file_for_plex(DL_DIR, movie)
