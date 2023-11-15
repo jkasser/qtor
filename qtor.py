@@ -168,14 +168,14 @@ def rename_file_for_plex(dl_dir, movie):
             new_file_name += "."
         new_file_name += file_resolution.strip().replace(" ", ".")
     os.rename(dl_dir + movie, dl_dir + new_file_name)
-    print(
-        f"Renaming finished."
-        f"\nTitle Match: {title_match}"
-        f"\nSeason Match: {season_match}"
-        f"\nFile Year Match: {year_match}"
-        f"\nFile Resolution Match: {resolution_match}"
-        f"\nNew Name: {new_file_name}"
-    )
+    msg = f"Renaming finished."\
+          f"\nTitle Match: {title_match}"\
+          f"\nSeason Match: {season_match}"\
+          f"\nFile Year Match: {year_match}"\
+          f"\nFile Resolution Match: {resolution_match}"\
+          f"\nNew Name: {new_file_name}"
+    logger.info(msg)
+    post_msg_to_disc(msg)
     return new_file_name
 
 
@@ -252,7 +252,7 @@ def _process_file(hash):
             if str(movie) == name and tag != "":
                 try:
                     if os.path.isdir(DL_DIR + movie):
-                        new_name = rename_file_for_plex(movie)
+                        new_name = rename_file_for_plex(DL_DIR, movie)
                         sub_dir = DL_DIR + new_name + '\\'
                         delete_extraneous_files(sub_dir)
                         get_name_for_subs(sub_dir)
