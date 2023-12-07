@@ -156,6 +156,7 @@ def rename_file_for_plex(dl_dir, movie):
         # re.sub("\d{1}", "")
         if new_file_name[-1] != ".":
             new_file_name += "."
+        new_file_name += file_season.strip().replace(" ", "")
     if re.search(episode_regx, movie) is not None:
         file_episode = re.search(episode_regx, movie).group()
         episode_match = True
