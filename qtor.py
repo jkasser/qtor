@@ -135,11 +135,13 @@ def rename_file_for_plex(dl_dir, movie):
     season_regx = r"[Ss]eason[\s\.]\d{1,2}|[Ss]\d{1,2}"
     title_regx = r"^\D+(?=\.)|^[^\.(]+"
     year_regx = r"(19|20)\d{2}(?!p)"
+    episode_regx = r"[Ee]pisode[\s\.]\d{1,2}|[Ee]\d{1,2}"
 
     title_match = False
     season_match = False
     resolution_match = False
     year_match = False
+    episode_match = False
 
     new_file_name = ""
     if re.search(title_regx, movie) is not None:
@@ -154,7 +156,15 @@ def rename_file_for_plex(dl_dir, movie):
         # re.sub("\d{1}", "")
         if new_file_name[-1] != ".":
             new_file_name += "."
-        new_file_name += file_season.strip().replace(" ", "")
+    if re.search(episode_regx, movie) is not None:
+        file_episode = re.search(episode_regx, movie).group()
+        episode_match = True
+        if "episode" in file_episode.lower():
+            file_episode = file_episode.lower().replace("episode", "E").replace(" ", "").replace(".", "")
+        # re.sub("\d{1}", "")
+        if new_file_name[-1] != ".":
+            new_file_name += "."
+        new_file_name += file_episode.strip().replace(" ", "")
     if re.search(year_regx, movie) is not None:
         file_year = re.search(year_regx, movie).group()
         year_match = True
@@ -172,6 +182,7 @@ def rename_file_for_plex(dl_dir, movie):
           f"\nTitle Match: {title_match}"\
           f"\nSeason Match: {season_match}"\
           f"\nFile Year Match: {year_match}"\
+          f"\nEpisode Match: {episode_match}"\
           f"\nFile Resolution Match: {resolution_match}"\
           f"\nNew Name: {new_file_name}"
     logger.info(msg)
