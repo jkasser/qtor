@@ -133,7 +133,7 @@ def delete_extraneous_files(media_path):
 def rename_file_for_plex(dl_dir, movie):
     resolution_regx = r"\d{3,4}p"
     season_regx = r"[Ss]eason[\s\.]\d{1,2}|[Ss]\d{1,2}"
-    title_regx = r"^\D+(?=\.)|^[^\.(]+"
+    title_regx = r"^.+?(?:(?=\.\d{4})|(?=\(\d{2,})|(?=\(\d{2,})|(?=[Ss]\d{1,})|(?=[Ee]\d{1,})|(?=\W\d{2,}))"
     year_regx = r"(19|20)\d{2}(?!p)"
     episode_regx = r"[Ee]pisode[\s\.]\d{1,2}|[Ee]\d{1,2}"
 
@@ -144,6 +144,9 @@ def rename_file_for_plex(dl_dir, movie):
     episode_match = False
 
     new_file_name = ""
+    # remove spaces from file name
+    movie = movie.replace(" ", ".")
+
     if re.search(title_regx, movie) is not None:
         file_title = re.search(title_regx, movie).group()
         title_match = True
