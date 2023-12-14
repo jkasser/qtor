@@ -259,20 +259,18 @@ def _process_file(hash):
     tv_dir = cfg["disk"]["tv_path"]
     try:
         tor = _get_file_by_hash(hash)[0]
-        name = tor["name"]
+        name = tor["name"].encode("ascii", "ignore").decode("utf-8")
         tag = tor["tags"]
 
         for movie in os.listdir(DL_DIR):
             # only rename files that have been tagged so we know where to put them
-            if str(name) in movie and tag != "":
+            if (str(name.strip()) in movie or movie in str(name.strip())) and tag != "":
                 try:
+                    new_name = rename_file_for_plex(DL_DIR, movie)
                     if os.path.isdir(DL_DIR + movie):
-                        new_name = rename_file_for_plex(DL_DIR, movie)
                         sub_dir = DL_DIR + new_name + '\\'
                         delete_extraneous_files(sub_dir)
                         get_name_for_subs(sub_dir)
-                    else:
-                        new_name = movie
                     # now move it to the new location
                     if tag == 'movie':
                         logger.info(f"File was tagged as {tag}.")
@@ -286,7 +284,7 @@ def _process_file(hash):
                     logger.info(f"Encountered exception! {e}")
                     continue
     except Exception as e:
-        return e
+        logger.info(f"Encountered exception! {e}")
 
 
 def _get_file_by_hash(hash):
@@ -301,7 +299,7 @@ def _get_list_of_all():
         torrent_list.append(
             {
                 "hash": tor["hash"],
-                "name": tor["name"],
+                "name": tor["name"].encode("ascii", "ignore").decode("utf-8"),
                 "progress": f'{tor["progress"]}',
                 "state": tor["state"],
                 "amount_left": tor["amount_left"],
