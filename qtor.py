@@ -145,14 +145,15 @@ def rename_file_for_plex(dl_dir, movie):
 
     new_file_name = ""
     # remove spaces from file name
-    movie = movie.replace(" ", ".")
+    formatted_movie = movie.replace(" ", ".")
 
-    if re.search(title_regx, movie) is not None:
-        file_title = re.search(title_regx, movie).group()
+    if re.search(title_regx, formatted_movie) is not None:
+        file_title = re.search(title_regx, formatted_movie).group()
         title_match = True
         new_file_name += str(file_title).strip().replace(" ", ".")
-    if re.search(season_regx, movie) is not None:
-        file_season = re.search(season_regx, movie).group()
+        logger.info(f"Title regex matched! New file name: {new_file_name}")
+    if re.search(season_regx, formatted_movie) is not None:
+        file_season = re.search(season_regx, formatted_movie).group()
         season_match = True
         if "season" in file_season.lower():
             file_season = file_season.lower().replace("season", "S").replace(" ", "").replace(".", "")
@@ -160,8 +161,9 @@ def rename_file_for_plex(dl_dir, movie):
         if new_file_name[-1] != ".":
             new_file_name += "."
         new_file_name += file_season.strip().replace(" ", "")
-    if re.search(episode_regx, movie) is not None:
-        file_episode = re.search(episode_regx, movie).group()
+        logger.info(f"Season regex matched! New file name: {new_file_name}")
+    if re.search(episode_regx, formatted_movie) is not None:
+        file_episode = re.search(episode_regx, formatted_movie).group()
         episode_match = True
         if "episode" in file_episode.lower():
             file_episode = file_episode.lower().replace("episode", "E").replace(" ", "").replace(".", "")
@@ -169,18 +171,21 @@ def rename_file_for_plex(dl_dir, movie):
         if new_file_name[-1] != ".":
             new_file_name += "."
         new_file_name += file_episode.strip().replace(" ", "")
-    if re.search(year_regx, movie) is not None:
-        file_year = re.search(year_regx, movie).group()
+        logger.info(f"Episode regex matched! New file name: {new_file_name}")
+    if re.search(year_regx, formatted_movie) is not None:
+        file_year = re.search(year_regx, formatted_movie).group()
         year_match = True
         if new_file_name[-1] != ".":
             new_file_name += "."
         new_file_name += file_year.strip().replace(" ", ".")
-    if re.search(resolution_regx, movie) is not None:
-        file_resolution = re.search(resolution_regx, movie).group()
+        logger.info(f"File year regex matched! New file name: {new_file_name}")
+    if re.search(resolution_regx, formatted_movie) is not None:
+        file_resolution = re.search(resolution_regx, formatted_movie).group()
         resolution_match = True
         if new_file_name[-1] != ".":
             new_file_name += "."
         new_file_name += file_resolution.strip().replace(" ", ".")
+        logger.info(f"Resolution regex matched! New file name: {new_file_name}")
     os.rename(dl_dir + movie, dl_dir + new_file_name)
     msg = f"Renaming finished."\
           f"\nTitle Match: {title_match}"\
