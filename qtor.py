@@ -26,16 +26,14 @@ logger.setLevel(logging.INFO)
 with open('config.yaml', 'r') as file:
     cfg = yaml.safe_load(file)
 
-
+# names of the folders we will move files to
 MOVIES_DIR = 'MOVIE'
 TV_DIR = 'TV'
 
-movie_reg = re.compile(r'.+?(?=\d{4})\d{4}|.+\S.\d{1,3}p.*')
-tv_show_reg = re.compile(r'(?<=\.)[Ss]\d{1,2}|\d{1,2}[ofOF]+\d{1,2}')
-
+# file extensions we won't delete
 FILE_EXTENSIONS = ('avi', 'mp4', 'mkv', 'srt')
 
-
+# how we keep track which tors we have processed for alerting purposes
 processed_tors = {}
 
 
@@ -233,6 +231,7 @@ def rename_and_move_subs(media_path):
                         )
                         os.rename(media_path + sub_file + "\\" + sub, media_path + "\\" + sub + ext)
                     except OSError as e:
+                        post_msg_to_disc(f"Encountered exception processing subtitle file: {e}")
                         logger.error(f"Ran into error processing sub file: {e}")
                         continue
                 #other times, like tv shows there are sub folders in the subs directory
@@ -254,6 +253,7 @@ def rename_and_move_subs(media_path):
                                 f"{media_path}{sub}{ext}"
                             )
                         except OSError as e:
+                            post_msg_to_disc(f"Encountered exception processing subtitle file: {e}")
                             logger.error(f"Ran into error processing sub file: {e}")
                             continue
 
@@ -287,8 +287,10 @@ def _process_file(hash):
                         shutil.move(DL_DIR+new_name, tv_dir)
                 except Exception as e:
                     logger.info(f"Encountered exception! {e}")
+                    post_msg_to_disc(f"Encountered exception processing file: {e}")
                     continue
     except Exception as e:
+        post_msg_to_disc(f"Encountered exception processing file: {e}")
         logger.info(f"Encountered exception! {e}")
 
 
@@ -486,6 +488,8 @@ if __name__ == '__main__':
 
         for latest_status in _get_list_of_all():
             if latest_status["hash"] not in processed_tors.keys():
+                post_msg_to_disc(f'New download detected: {latest_status["name"]}')
+                get_tor_list()
                 processed_tors[latest_status["hash"]] = False
             # if the state is pausedUp
             if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
