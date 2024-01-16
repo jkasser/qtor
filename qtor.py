@@ -491,8 +491,7 @@ if __name__ == '__main__':
 
         for latest_status in _get_list_of_all():
             if latest_status["hash"] not in processed_tors.keys():
-                post_msg_to_disc(f'New download detected: {latest_status["name"]}')
-                get_tor_list()
+                post_msg_to_disc(f'New download detected: {latest_status["name"]} // hash: {latest_status["hash"]}')
                 processed_tors[latest_status["hash"]] = False
             # if the state is pausedUp
             if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
