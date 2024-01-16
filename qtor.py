@@ -285,6 +285,9 @@ def _process_file(hash):
                         logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {tv_dir}")
                         shutil.move(DL_DIR+new_name, tv_dir)
+                    # file completed we can safely delete it here if we didn't run into an exception
+                    post_msg_to_disc(f"File finished processing without errors, deleting tor now.")
+                    _delete_file(tor["hash"])
                 except Exception as e:
                     logger.info(f"Encountered exception! {e}")
                     post_msg_to_disc(f"Encountered exception processing file: {e}")
