@@ -86,15 +86,15 @@ def parse_message_body(cfg, message_body: dict):
     logger.info(f"Received command: {command}")
     try:
         if 'get-all' == command:
-            get_tor_list()
+            get_tor_list(cfg)
         if 'pause-all' == command:
             _pause_all()
         if 'pause-one' == command:
             _pause_torrent_by_hash(data)
         if 'start' == command:
-            check_and_start_process()
+            check_and_start_process(cfg)
         if 'connect' == command:
-            connect()
+            connect(cfg)
         if 'download-link' == command:
             _download_file(data)
         if 'force-start' == command:
@@ -110,9 +110,9 @@ def parse_message_body(cfg, message_body: dict):
         if 'tag-movie' == command:
             _tag_movie(data)
         if 'process-file' == command:
-            _process_file(data)
+            _process_file(cfg, data)
         if 'get-logs' == command:
-            _send_logs()
+            _send_logs(cfg)
     except Exception as e:
         payload = {"content": f'Error running command: {command}\n{e}'}
         r = requests.post(cfg["discord"]["url"], json=payload)
@@ -137,7 +137,7 @@ def get_file_title(old_file_name, new_file_name):
         logger.info(f"Title regex matched! New file name: {new_file_name}")
         match = True
     else:
-        logger.warn("Title regex could not find a match!")
+        logger.warning("Title regex could not find a match!")
         match = False
     return new_file_name, match
 
@@ -155,7 +155,7 @@ def get_file_season(old_file_name, new_file_name):
         logger.info(f"Season regex matched! New file name: {new_file_name}")
         match = True
     else:
-        logger.warn("Season regex could not find a match!")
+        logger.warning("Season regex could not find a match!")
         match = False
     return new_file_name, match
 
@@ -173,7 +173,7 @@ def get_file_episode(old_file_name, new_file_name):
         logger.info(f"Episode regex matched! New file name: {new_file_name}")
         match = True
     else:
-        logger.warn("Episode regex could not find a match!")
+        logger.warning("Episode regex could not find a match!")
         match = False
     return new_file_name, match
 
@@ -188,7 +188,7 @@ def get_file_year(old_file_name, new_file_name):
         logger.info(f"File year regex matched! New file name: {new_file_name}")
         match = True
     else:
-        logger.warn("Year regex could not find a match!")
+        logger.warning("Year regex could not find a match!")
         match = False
     return new_file_name, match
 
@@ -203,7 +203,7 @@ def get_file_resolution(old_file_name, new_file_name):
         logger.info(f"Resolution regex matched! New file name: {new_file_name}")
         match = True
     else:
-        logger.warn("Resolution regex could not find a match!")
+        logger.warning("Resolution regex could not find a match!")
         match = False
     return new_file_name, match
 
@@ -374,16 +374,16 @@ def _download_file(link):
     return qb.torrents_add(link)
 
 
-def _tag_tv(hash):
-    return qb.torrents_add_tags(tags='tv', torrent_hashes=hash)
+def _tag_tv(tor_hash):
+    return qb.torrents_add_tags(tags='tv', torrent_hashes=tor_hash)
 
 
-def _tag_movie(hash):
-    return qb.torrents_add_tags(tags='movie', torrent_hashes=hash)
+def _tag_movie(tor_hash):
+    return qb.torrents_add_tags(tags='movie', torrent_hashes=tor_hash)
 
 
-def _delete_file(hash, delete_files=True):
-    return qb.torrents_delete(delete_files=delete_files,torrent_hashes=hash)
+def _delete_file(tor_hash, delete_files=True):
+    return qb.torrents_delete(delete_files=delete_files, torrent_hashes=tor_hash)
 
 
 def _set_download_location(path):
