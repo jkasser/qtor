@@ -1,7 +1,6 @@
 import qbittorrentapi
 import requests
 import os
-import sys
 import boto3
 import subprocess
 import yaml
@@ -13,7 +12,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 
-log_file = os.path.expandvars("%USERPROFILE%\Desktop\qtor.log")
+log_file = os.path.expandvars("%USERPROFILE%\\Desktop\\qtor.log")
 logger = logging.getLogger('QTOR')
 handler = RotatingFileHandler(log_file, maxBytes=1024**2, backupCount=2)
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", "%Y-%m-%d %H:%M:%S")
@@ -23,8 +22,10 @@ logger.setLevel(logging.INFO)
 
 
 # get values from the yaml file
-with open('config.yaml', 'r') as file:
-    cfg = yaml.safe_load(file)
+def get_config():
+    with open('config.yaml', 'r') as file:
+        cfg = yaml.safe_load(file)
+    return cfg
 
 # names of the folders we will move files to
 MOVIES_DIR = 'MOVIE'
@@ -37,7 +38,7 @@ FILE_EXTENSIONS = ('avi', 'mp4', 'mkv', 'srt')
 processed_tors = {}
 
 
-def connect():
+def connect(cfg):
     try:
         qb = qbittorrentapi.Client(
             host=cfg["qb"]["host"],
@@ -48,7 +49,7 @@ def connect():
     return qb
 
 
-def retrieve_command_from_sqs(queue):
+def retrieve_command_from_sqs(cfg, queue):
     response = queue.receive_messages(
         QueueUrl=cfg["plex"]["sqs_queue"],
         AttributeNames=['ALL'],
@@ -60,7 +61,7 @@ def retrieve_command_from_sqs(queue):
     return response
 
 
-def check_and_start_process():
+def check_and_start_process(cfg):
     call = 'TASKLIST', '/FI', f'imagename eq {cfg["qb"]["process"]}'
     # use buildin check_output right away
     output = subprocess.check_output(call).decode()
@@ -79,7 +80,7 @@ def check_and_start_process():
         return False
 
 
-def parse_message_body(message_body:dict):
+def parse_message_body(cfg, message_body: dict):
     command = message_body["command"].lower()
     data = message_body["data"]
     logger.info(f"Received command: {command}")
@@ -128,31 +129,23 @@ def delete_extraneous_files(media_path):
     logger.info(f"Deleted {count} file(s).")
 
 
-def rename_file_for_plex(dl_dir, movie):
-    resolution_regx = r"\d{3,4}p"
-    season_regx = r"[Ss]eason[\s\.]\d{1,2}|[Ss]\d{1,2}"
+def get_file_title(old_file_name, new_file_name):
     title_regx = r"^.+?(?:(?=\.\d{4})|(?=\(\d{2,})|(?=\(\d{2,})|(?=[Ss]\d{1,})|(?=[Ee]\d{1,})|(?=\W\d{2,}))"
-    year_regx = r"(19|20)\d{2}(?!p)"
-    episode_regx = r"[Ee]pisode[\s\.]\d{1,2}|[Ee]\d{1,2}"
-
-    title_match = False
-    season_match = False
-    resolution_match = False
-    year_match = False
-    episode_match = False
-
-    new_file_name = ""
-    # remove spaces from file name
-    formatted_movie = movie.replace(" ", ".")
-
-    if re.search(title_regx, formatted_movie) is not None:
-        file_title = re.search(title_regx, formatted_movie).group()
-        title_match = True
+    if re.search(title_regx, old_file_name) is not None:
+        file_title = re.search(title_regx, old_file_name).group()
         new_file_name += str(file_title).strip().replace(" ", ".")
         logger.info(f"Title regex matched! New file name: {new_file_name}")
-    if re.search(season_regx, formatted_movie) is not None:
-        file_season = re.search(season_regx, formatted_movie).group()
-        season_match = True
+        match = True
+    else:
+        logger.warn("Title regex could not find a match!")
+        match = False
+    return new_file_name, match
+
+
+def get_file_season(old_file_name, new_file_name):
+    season_regx = r"[Ss]eason[\s\.]\d{1,2}|[Ss]\d{1,2}|(?<=\[)\d{1,2}(?=x)|\d{1,2}(?=x\d)"
+    if re.search(season_regx, old_file_name) is not None:
+        file_season = re.search(season_regx, old_file_name).group()
         if "season" in file_season.lower():
             file_season = file_season.lower().replace("season", "S").replace(" ", "").replace(".", "")
         # re.sub("\d{1}", "")
@@ -160,9 +153,17 @@ def rename_file_for_plex(dl_dir, movie):
             new_file_name += "."
         new_file_name += file_season.strip().replace(" ", "")
         logger.info(f"Season regex matched! New file name: {new_file_name}")
-    if re.search(episode_regx, formatted_movie) is not None:
-        file_episode = re.search(episode_regx, formatted_movie).group()
-        episode_match = True
+        match = True
+    else:
+        logger.warn("Season regex could not find a match!")
+        match = False
+    return new_file_name, match
+
+
+def get_file_episode(old_file_name, new_file_name):
+    episode_regx = r"[Ee]pisode[\s\.]\d{1,2}|[Ee]\d{1,2}|(?<=\dx)\d{1,2}"
+    if re.search(episode_regx, old_file_name) is not None:
+        file_episode = re.search(episode_regx, old_file_name).group()
         if "episode" in file_episode.lower():
             file_episode = file_episode.lower().replace("episode", "E").replace(" ", "").replace(".", "")
         # re.sub("\d{1}", "")
@@ -170,21 +171,56 @@ def rename_file_for_plex(dl_dir, movie):
             new_file_name += "."
         new_file_name += file_episode.strip().replace(" ", "")
         logger.info(f"Episode regex matched! New file name: {new_file_name}")
-    if re.search(year_regx, formatted_movie) is not None:
-        file_year = re.search(year_regx, formatted_movie).group()
-        year_match = True
+        match = True
+    else:
+        logger.warn("Episode regex could not find a match!")
+        match = False
+    return new_file_name, match
+
+
+def get_file_year(old_file_name, new_file_name):
+    year_regx = r"(19|20)\d{2}(?!p)"
+    if re.search(year_regx, old_file_name) is not None:
+        file_year = re.search(year_regx, old_file_name).group()
         if new_file_name[-1] != ".":
             new_file_name += "."
         new_file_name += file_year.strip().replace(" ", ".")
         logger.info(f"File year regex matched! New file name: {new_file_name}")
-    if re.search(resolution_regx, formatted_movie) is not None:
-        file_resolution = re.search(resolution_regx, formatted_movie).group()
-        resolution_match = True
+        match = True
+    else:
+        logger.warn("Year regex could not find a match!")
+        match = False
+    return new_file_name, match
+
+
+def get_file_resolution(old_file_name, new_file_name):
+    resolution_regx = r"\d{3,4}p"
+    if re.search(resolution_regx, old_file_name) is not None:
+        file_resolution = re.search(resolution_regx, old_file_name).group()
         if new_file_name[-1] != ".":
             new_file_name += "."
         new_file_name += file_resolution.strip().replace(" ", ".")
         logger.info(f"Resolution regex matched! New file name: {new_file_name}")
-    os.rename(dl_dir + movie, dl_dir + new_file_name)
+        match = True
+    else:
+        logger.warn("Resolution regex could not find a match!")
+        match = False
+    return new_file_name, match
+
+
+def rename_file_for_plex(dl_dir, movie):
+    new_file_name = ""
+    # remove spaces from file name
+    formatted_movie = movie.replace(" ", ".")
+
+    new_file_name, title_match = get_file_title(formatted_movie, new_file_name)
+    new_file_name, season_match = get_file_season(formatted_movie, new_file_name)
+    new_file_name, episode_match = get_file_episode(formatted_movie, new_file_name)
+    new_file_name, year_match = get_file_year(formatted_movie, new_file_name)
+    new_file_name, resolution_match = get_file_resolution(formatted_movie, new_file_name)
+
+    if dl_dir is not None:
+        os.rename(dl_dir + movie, dl_dir + new_file_name)
     msg = f"Renaming finished."\
           f"\nTitle Match: {title_match}"\
           f"\nSeason Match: {season_match}"\
@@ -258,7 +294,7 @@ def rename_and_move_subs(media_path):
                             continue
 
 
-def _process_file(hash):
+def _process_file(cfg, hash):
     DL_DIR = cfg["disk"]["dl_path"]
     movie_dir = cfg["disk"]["movie_path"]
     tv_dir = cfg["disk"]["tv_path"]
@@ -389,7 +425,7 @@ def _format_tor_message(tor: dict):
     return formatted_message
 
 
-def get_tor_list():
+def get_tor_list(cfg):
     tor_list = _get_list_of_all()
     formatted_message = []
     for tor in tor_list:
@@ -423,14 +459,14 @@ def get_tor_list():
         logger.info(f"Sent message to discord! {payload['content']} with response: {r.status_code}")
 
 
-def post_msg_to_disc(msg):
+def post_msg_to_disc(msg, cfg):
     payload = {"content": msg}
     r = requests.post(cfg["discord"]["url"], json=payload)
     logger.info(f"Sending message to discord: {msg} with response {r.status_code}")
 
 
-def _send_logs():
-    log_file = os.path.expandvars("%USERPROFILE%\Desktop\qtor.log")
+def _send_logs(cfg):
+    log_file = os.path.expandvars("%USERPROFILE%\\Desktop\\qtor.log")
     files = {
         'file': open(log_file, 'rb')
     }
@@ -444,37 +480,38 @@ def _send_logs():
 
 
 if __name__ == '__main__':
+    config = get_config()
     files_to_be_processed = []
     # Instantiate everything we need
     # start the application
     logger.info("Starting QTOR")
-    check_and_start_process()
+    check_and_start_process(cfg=config)
     # connect to the process
     logger.info("Connecting to processes...")
-    qb = connect()
+    qb = connect(cfg=config)
     logger.info("Creating SQS object...")
     # create our sqs object
     sqs = boto3.resource(
         'sqs',
-        region_name=cfg["plex"]["region"],
-        aws_access_key_id=cfg["plex"]["aws_key_id"],
-        aws_secret_access_key=cfg["plex"]["aws_secret_id"]
+        region_name=config["plex"]["region"],
+        aws_access_key_id=config["plex"]["aws_key_id"],
+        aws_secret_access_key=config["plex"]["aws_secret_id"]
     )
     # grab the queue object
-    queue = sqs.get_queue_by_name(QueueName=cfg["plex"]["queue_name"])
+    queue = sqs.get_queue_by_name(QueueName=config["plex"]["queue_name"])
 
     # start the polling loop
     logger.info("Starting polling now!")
     while True:
         messages_to_delete = []
         # check for new messages
-        response = retrieve_command_from_sqs(queue)
+        response = retrieve_command_from_sqs(config, queue)
         # if we have a response
         for message in response:
             logger.info("New message from SQS!")
             # parse the response of message.body here
             body = json.loads(message.body)
-            parse_message_body(body)
+            parse_message_body(config, body)
             messages_to_delete.append({
                 'Id': message.message_id,
                 'ReceiptHandle': message.receipt_handle
@@ -498,7 +535,7 @@ if __name__ == '__main__':
                 # file is completed, start processing it
                 logger.info("File has completed, automatically processing.")
                 post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.')
-                _process_file(latest_status["hash"])
+                _process_file(config, latest_status["hash"])
                 # set processed to false so it doesn't alert more than once
                 processed_tors[latest_status["hash"]] = True
             # elif latest_status["state"] == "pausedUP" and latest_status["tags"] == "" and processed_tors[latest_status["hash"]] is False:
