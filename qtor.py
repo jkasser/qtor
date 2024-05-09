@@ -208,10 +208,10 @@ def get_file_resolution(old_file_name, new_file_name):
     return new_file_name, match
 
 
-def rename_file_for_plex(dl_dir, movie):
+def rename_file_for_plex(cfg, dl_dir, file_name):
     new_file_name = ""
     # remove spaces from file name
-    formatted_movie = movie.replace(" ", ".")
+    formatted_movie = file_name.replace(" ", ".")
 
     new_file_name, title_match = get_file_title(formatted_movie, new_file_name)
     new_file_name, season_match = get_file_season(formatted_movie, new_file_name)
@@ -220,7 +220,7 @@ def rename_file_for_plex(dl_dir, movie):
     new_file_name, resolution_match = get_file_resolution(formatted_movie, new_file_name)
 
     if dl_dir is not None:
-        os.rename(dl_dir + movie, dl_dir + new_file_name)
+        os.rename(dl_dir + file_name, dl_dir + new_file_name)
     msg = f"Renaming finished."\
           f"\nTitle Match: {title_match}"\
           f"\nSeason Match: {season_match}"\
@@ -229,7 +229,7 @@ def rename_file_for_plex(dl_dir, movie):
           f"\nFile Resolution Match: {resolution_match}"\
           f"\nNew Name: {new_file_name}"
     logger.info(msg)
-    post_msg_to_disc(msg)
+    post_msg_to_disc(config, msg)
     return new_file_name
 
 
@@ -295,7 +295,7 @@ def rename_and_move_subs(media_path):
 
 
 def _process_file(cfg, hash):
-    DL_DIR = cfg["disk"]["dl_path"]
+    dl_dir = cfg["disk"]["dl_path"]
     movie_dir = cfg["disk"]["movie_path"]
     tv_dir = cfg["disk"]["tv_path"]
     try:
@@ -303,24 +303,25 @@ def _process_file(cfg, hash):
         name = tor["name"].encode("ascii", "ignore").decode("utf-8")
         tag = tor["tags"]
 
-        for movie in os.listdir(DL_DIR):
+        for movie in os.listdir(dl_dir):
+            logger.info(f"Inspecting file name: {movie}")
             # only rename files that have been tagged so we know where to put them
-            if (str(name.strip()[:12]) in movie[:12] or movie[:12] in str(name.strip())[:12]) and tag != "":
+            if tag != "":
                 try:
-                    new_name = rename_file_for_plex(DL_DIR, movie)
-                    if os.path.isdir(DL_DIR + movie):
-                        sub_dir = DL_DIR + new_name + '\\'
+                    new_name = rename_file_for_plex(config, dl_dir, movie)
+                    if os.path.isdir(dl_dir + movie):
+                        sub_dir = dl_dir + new_name + '\\'
                         delete_extraneous_files(sub_dir)
                         get_name_for_subs(sub_dir)
                     # now move it to the new location
                     if tag == 'movie':
                         logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {movie_dir}")
-                        shutil.move(DL_DIR+new_name, movie_dir)
+                        shutil.move(dl_dir+new_name, movie_dir)
                     elif tag == 'tv':
                         logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {tv_dir}")
-                        shutil.move(DL_DIR+new_name, tv_dir)
+                        shutil.move(dl_dir+new_name, tv_dir)
                     # file completed we can safely delete it here if we didn't run into an exception
                     post_msg_to_disc(f"File finished processing without errors, deleting tor now.")
                     _delete_file(tor["hash"])
@@ -328,6 +329,8 @@ def _process_file(cfg, hash):
                     logger.info(f"Encountered exception! {e}")
                     post_msg_to_disc(f"Encountered exception processing file: {e}")
                     continue
+            else:
+                logger.info(f"File was not tagged, skipping {movie}")
     except Exception as e:
         post_msg_to_disc(f"Encountered exception processing file: {e}")
         logger.info(f"Encountered exception! {e}")
