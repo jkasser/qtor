@@ -229,7 +229,7 @@ def rename_file_for_plex(cfg, dl_dir, file_name):
           f"\nFile Resolution Match: {resolution_match}"\
           f"\nNew Name: {new_file_name}"
     logger.info(msg)
-    post_msg_to_disc(config, msg)
+    post_msg_to_disc(msg)
     return new_file_name
 
 
@@ -462,9 +462,10 @@ def get_tor_list(cfg):
         logger.info(f"Sent message to discord! {payload['content']} with response: {r.status_code}")
 
 
-def post_msg_to_disc(msg, cfg):
+def post_msg_to_disc(msg):
+    config = get_config()
     payload = {"content": msg}
-    r = requests.post(cfg["discord"]["url"], json=payload)
+    r = requests.post(config["discord"]["url"], json=payload)
     logger.info(f"Sending message to discord: {msg} with response {r.status_code}")
 
 
