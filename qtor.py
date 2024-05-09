@@ -130,7 +130,7 @@ def delete_extraneous_files(media_path):
 
 
 def get_file_title(old_file_name, new_file_name):
-    title_regx = r"^.+?(?:(?=\.\d{4})|(?=\(\d{2,})|(?=\(\d{2,})|(?=[Ss]\d{1,})|(?=[Ee]\d{1,})|(?=\W\d{2,}))"
+    title_regx = r"^.+?(?:(?=\.\d{4})|(?=\(\d{2,})|(?=\(\d{2,})|(?=[Ss]\d{1,})|(?=[Ee]\d{1,})|(?=\W\d{2,}))|^.+?(?=[Ss]eason)|^.+?(?=[Ee]pisode)|^.+?\d{1,2}"
     if re.search(title_regx, old_file_name) is not None:
         file_title = re.search(title_regx, old_file_name).group()
         new_file_name += str(file_title).strip().replace(" ", ".")

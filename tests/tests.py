@@ -10,8 +10,8 @@ from qtor import get_file_resolution, get_file_episode, get_file_title, get_file
                 "Planet.Earth.III.S01.2160p",
         ),
         (
-                "Twin Peaks Season 01",
-                "Twin.Peaks.Season.S01",
+                "Twin Peaks Season 1 Complete DVDRip - x264 - MKV by RiddlerA",
+                "Twin.Peaks.S1",
         ),
     ]
 )
