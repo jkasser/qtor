@@ -212,12 +212,15 @@ def rename_file_for_plex(cfg, dl_dir, file_name):
     new_file_name = ""
     # remove spaces from file name
     formatted_movie = file_name.replace(" ", ".")
+    extension = file_name[-3:]
 
     new_file_name, title_match = get_file_title(formatted_movie, new_file_name)
     new_file_name, season_match = get_file_season(formatted_movie, new_file_name)
     new_file_name, episode_match = get_file_episode(formatted_movie, new_file_name)
     new_file_name, year_match = get_file_year(formatted_movie, new_file_name)
     new_file_name, resolution_match = get_file_resolution(formatted_movie, new_file_name)
+
+    new_file_name = f"{new_file_name}.{extension}"
 
     if dl_dir is not None:
         os.rename(dl_dir + file_name, dl_dir + new_file_name)
