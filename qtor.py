@@ -481,7 +481,7 @@ def get_tor_list(cfg):
 
 
 def post_msg_to_disc(msg, tag=None):
-    if tag is not None or tag != 'private':
+    if tag != 'private':
         config = get_config()
         payload = {"content": msg}
         r = requests.post(config["discord"]["url"], json=payload)
