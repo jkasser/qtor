@@ -113,6 +113,8 @@ def parse_message_body(cfg, message_body: dict):
             _process_file(cfg, data)
         if 'get-logs' == command:
             _send_logs(cfg)
+        if 'download-private' == command:
+            _download_file(data, private=True)
     except Exception as e:
         payload = {"content": f'Error running command: {command}\n{e}'}
         r = requests.post(cfg["discord"]["url"], json=payload)
@@ -305,6 +307,7 @@ def _process_file(cfg, hash):
     dl_dir = cfg["disk"]["dl_path"]
     movie_dir = cfg["disk"]["movie_path"]
     tv_dir = cfg["disk"]["tv_path"]
+    private_dir = cfg["disk"]["private_path"]
     try:
         tor = _get_file_by_hash(hash)[0]
         name = tor["name"].encode("ascii", "ignore").decode("utf-8")
@@ -329,17 +332,21 @@ def _process_file(cfg, hash):
                         logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {tv_dir}")
                         shutil.move(dl_dir+new_name, tv_dir)
+                    elif tag == 'private':
+                        logger.info(f"File was tagged as {tag}.")
+                        logger.info(f"Moving file to {tv_dir}")
+                        shutil.move(dl_dir + new_name, private_dir)
                     # file completed we can safely delete it here if we didn't run into an exception
-                    post_msg_to_disc(f"File finished processing without errors, deleting tor now.")
+                    post_msg_to_disc(f"File finished processing without errors, deleting tor now.", tag=tag)
                     _delete_file(tor["hash"])
                 except Exception as e:
                     logger.info(f"Encountered exception! {e}")
-                    post_msg_to_disc(f"Encountered exception processing file: {e}")
+                    post_msg_to_disc(f"Encountered exception processing file: {e}", tag=tag)
                     continue
             else:
                 logger.info(f"File was not tagged, skipping {movie}")
     except Exception as e:
-        post_msg_to_disc(f"Encountered exception processing file: {e}")
+        post_msg_to_disc(f"Encountered exception processing file: {e}", tag=tor["tags"])
         logger.info(f"Encountered exception! {e}")
 
 
@@ -377,8 +384,11 @@ def _pause_torrent_by_hash(hash):
     return qb.torrents.pause(hash)
 
 
-def _download_file(link):
-    return qb.torrents_add(link)
+def _download_file(link, private=False):
+    if not private:
+        return qb.torrents_add(link)
+    else:
+        return qb.torrents_add(link, tags='private')
 
 
 def _tag_tv(tor_hash):
@@ -439,9 +449,10 @@ def get_tor_list(cfg):
     tor_list = _get_list_of_all()
     formatted_message = []
     for tor in tor_list:
-        formatted_message.append(
-            _format_tor_message(tor)
-        )
+        if tor["tags"] != 'private':
+            formatted_message.append(
+                _format_tor_message(tor)
+            )
     payload = {
         "content": "\n".join(formatted_message)
     }
@@ -469,11 +480,14 @@ def get_tor_list(cfg):
         logger.info(f"Sent message to discord! {payload['content']} with response: {r.status_code}")
 
 
-def post_msg_to_disc(msg):
-    config = get_config()
-    payload = {"content": msg}
-    r = requests.post(config["discord"]["url"], json=payload)
-    logger.info(f"Sending message to discord: {msg} with response {r.status_code}")
+def post_msg_to_disc(msg, tag=None):
+    if tag is not None and tag != 'private':
+        config = get_config()
+        payload = {"content": msg}
+        r = requests.post(config["discord"]["url"], json=payload)
+        logger.info(f"Sending message to discord: {msg} with response {r.status_code}")
+    else:
+        logger.info(f'PRIVATE: {msg}')
 
 
 def _send_logs(cfg):
@@ -539,13 +553,13 @@ if __name__ == '__main__':
 
         for latest_status in _get_list_of_all():
             if latest_status["hash"] not in processed_tors.keys():
-                post_msg_to_disc(f'New download detected: {latest_status["name"]} // hash: {latest_status["hash"]}')
+                post_msg_to_disc(f'New download detected: {latest_status["name"]} // hash: {latest_status["hash"]}', tag=latest_status["tags"])
                 processed_tors[latest_status["hash"]] = False
             # if the state is pausedUp
             if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
                 # file is completed, start processing it
-                logger.info("File has completed, automatically processing.")
-                post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.')
+                post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.', tag=latest_status["tags"])
+                logger.info('File: {latest_status["name"]} has completed, automatically processing.')
                 _process_file(config, latest_status["hash"])
                 # set processed to false so it doesn't alert more than once
                 processed_tors[latest_status["hash"]] = True
