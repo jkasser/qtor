@@ -559,7 +559,7 @@ if __name__ == '__main__':
             if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
                 # file is completed, start processing it
                 post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.', tag=latest_status["tags"])
-                logger.info('File: {latest_status["name"]} has completed, automatically processing.')
+                logger.info(f'File: {latest_status["name"]} has completed, automatically processing.')
                 _process_file(config, latest_status["hash"])
                 # set processed to false so it doesn't alert more than once
                 processed_tors[latest_status["hash"]] = True
