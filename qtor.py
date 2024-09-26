@@ -316,7 +316,7 @@ def _process_file(cfg, hash):
         for movie in os.listdir(dl_dir):
             logger.info(f"Inspecting file name: {movie}")
             # only rename files that have been tagged so we know where to put them
-            if (movie.lower().startswith(name[:5].lower()) or name[:5].lower() in movie.lower()[:5]) and tag != "":
+            if (movie.replace(' ', '.').lower().startswith(name[:5].replace(' ', '.').lower()) or name[:5].lower() in movie.lower()[:5]) and tag != "":
                 try:
                     new_name = rename_file_for_plex(config, dl_dir, movie)
                     if os.path.isdir(dl_dir + movie):
@@ -334,7 +334,7 @@ def _process_file(cfg, hash):
                         shutil.move(dl_dir+new_name, tv_dir)
                     elif tag == 'private':
                         logger.info(f"File was tagged as {tag}.")
-                        logger.info(f"Moving file to {tv_dir}")
+                        logger.info(f"Moving file to {private_dir}")
                         shutil.move(dl_dir + new_name, private_dir)
                     # file completed we can safely delete it here if we didn't run into an exception
                     post_msg_to_disc(f"File finished processing without errors, deleting tor now.", tag=tag)
@@ -344,7 +344,7 @@ def _process_file(cfg, hash):
                     post_msg_to_disc(f"Encountered exception processing file: {e}", tag=tag)
                     continue
             else:
-                logger.info(f"File was not tagged, skipping {movie}")
+                logger.info(f"File was not tagged, or name was for different movie skipping {movie}")
     except Exception as e:
         post_msg_to_disc(f"Encountered exception processing file: {e}", tag=tor["tags"])
         logger.info(f"Encountered exception! {e}")
