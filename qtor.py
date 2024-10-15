@@ -229,6 +229,9 @@ def rename_file_for_plex(cfg, dl_dir, file_name):
 
     new_file_name = f"{new_file_name}{extension}"
 
+    # return meta data about if it was a movie or tv
+    likely_tv = any(season_match,  episode_match)
+
     if dl_dir is not None:
         os.rename(dl_dir + file_name, dl_dir + new_file_name)
     msg = f"Renaming finished."\
@@ -240,7 +243,7 @@ def rename_file_for_plex(cfg, dl_dir, file_name):
           f"\nNew Name: {new_file_name}"
     logger.info(msg)
     post_msg_to_disc(msg)
-    return new_file_name
+    return new_file_name, likely_tv
 
 
 def get_name_for_subs(media_path):
@@ -319,24 +322,31 @@ def _process_file(cfg, hash):
             # only rename files that have been tagged so we know where to put them
             if (movie.replace(' ', '.').lower().startswith(name[:5].replace(' ', '.').lower()) or name[:5].lower() in movie.lower()[:5]) and tag != "":
                 try:
-                    new_name = rename_file_for_plex(config, dl_dir, movie)
+                    new_name, likely_tv = rename_file_for_plex(config, dl_dir, movie)
                     if os.path.isdir(dl_dir + movie):
                         sub_dir = dl_dir + new_name + '\\'
                         delete_extraneous_files(sub_dir)
                         get_name_for_subs(sub_dir)
                     # now move it to the new location
-                    if tag == 'movie':
-                        logger.info(f"File was tagged as {tag}.")
+                    if tag == 'movie' or not likely_tv:
+                        if not likely_tv:
+                            logger.info("File was not tagged, it looks like it is most likely a Movie.")
+                        else:
+                            logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {movie_dir}")
                         shutil.move(dl_dir+new_name, movie_dir)
-                    elif tag == 'tv':
-                        logger.info(f"File was tagged as {tag}.")
+                    elif tag == 'tv' or likely_tv:
+                        if likely_tv:
+                            logger.info("File was not tagged, it looks like it is most likely a TV Show.")
+                        else:
+                            logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {tv_dir}")
                         shutil.move(dl_dir+new_name, tv_dir)
                     elif tag == 'private':
                         logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {private_dir}")
                         shutil.move(dl_dir + new_name, private_dir)
+
                     # file completed we can safely delete it here if we didn't run into an exception
                     post_msg_to_disc(f"File finished processing without errors, deleting tor now.", tag=tag)
                     _delete_file(tor["hash"])
@@ -545,7 +555,7 @@ if __name__ == '__main__':
                 post_msg_to_disc(f'New download detected: {latest_status["name"]} // hash: {latest_status["hash"]}', tag=latest_status["tags"])
                 processed_tors[latest_status["hash"]] = False
             # if the state is pausedUp
-            if latest_status["state"] == "pausedUP" and latest_status["tags"] != "" and processed_tors[latest_status["hash"]] is False:
+            if latest_status["state"] == "pausedUP" and processed_tors[latest_status["hash"]] is False:
                 # file is completed, start processing it
                 post_msg_to_disc(f'File: {latest_status["name"]} has completed! Processing it now.', tag=latest_status["tags"])
                 logger.info(f'File: {latest_status["name"]} has completed, automatically processing.')
