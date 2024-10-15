@@ -473,7 +473,7 @@ def get_tor_list(cfg):
         r = requests.post(cfg["discord"]["url"], json=payload)
         logger.info(f"Sent message to discord! {payload['content']} with response: {r.status_code}")
     else:
-        for msg_part in MessageHandler(payload["content"]):
+        for msg_part in MessageHandler(payload["content"]).response:
             payload = {"content": "\n".join(msg_part)}
             r = requests.post(cfg["discord"]["url"], json=payload)
             logger.info("Sent message to discord!", r.status_code, r.text)
