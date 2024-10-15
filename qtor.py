@@ -9,6 +9,7 @@ import shutil
 import json
 import datetime
 import logging
+from message_handler import MessageHandler
 from logging.handlers import RotatingFileHandler
 
 
@@ -457,27 +458,15 @@ def get_tor_list(cfg):
         "content": "\n".join(formatted_message)
     }
     # make sure we only send 2000 chars at a time which is the max for discord
-    if len(payload["content"]) >= 2000:
-        pieces = payload["content"].split('\n')
-        segmented_message = ""
-        for piece in pieces:
-            # logger.info(f'length of next segment is {len(piece)}')
-            if len(segmented_message) + len(piece) < 2000:
-                segmented_message += piece
-                # logger.info(f'length of segmented message is now: {len(segmented_message)}')
-            else:
-                # logger.info(f'length would have been too long!')
-                payload = {"content": "\n".join(segmented_message)}
-                r = requests.post(cfg["discord"]["url"], json=payload)
-                logger.info("Sent message to discord!", r.status_code, r.text)
-                # logger.info(f'we would have sent {len(payload["content"])}')
-                segmented_message = piece
-    # if it's less than the regular checks will suffice
-    else:
-        if payload["content"] == '':
-            payload["content"] = 'There are no active Torrents!'
+    if payload["content"] == '':
+        payload["content"] = 'There are no active Torrents!'
         r = requests.post(cfg["discord"]["url"], json=payload)
         logger.info(f"Sent message to discord! {payload['content']} with response: {r.status_code}")
+    else:
+        for msg_part in MessageHandler(payload["content"]):
+            payload = {"content": "\n".join(msg_part)}
+            r = requests.post(cfg["discord"]["url"], json=payload)
+            logger.info("Sent message to discord!", r.status_code, r.text)
 
 
 def post_msg_to_disc(msg, tag=None):
