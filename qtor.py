@@ -320,7 +320,7 @@ def _process_file(cfg, hash):
         for movie in os.listdir(dl_dir):
             logger.info(f"Inspecting file name: {movie}")
             # only rename files that have been tagged so we know where to put them
-            if (movie.replace(' ', '.').lower().startswith(name[:5].replace(' ', '.').lower()) or name[:5].lower() in movie.lower()[:5]) and tag != "":
+            if (movie.replace(' ', '.').lower().startswith(name[:5].replace(' ', '.').lower()) or name[:5].lower() in movie.lower()[:5]):
                 try:
                     new_name, likely_tv = rename_file_for_plex(config, dl_dir, movie)
                     if os.path.isdir(dl_dir + movie):
