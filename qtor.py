@@ -230,7 +230,7 @@ def rename_file_for_plex(cfg, dl_dir, file_name):
     new_file_name = f"{new_file_name}{extension}"
 
     # return meta data about if it was a movie or tv
-    likely_tv = any(season_match,  episode_match)
+    likely_tv = any([season_match,  episode_match])
 
     if dl_dir is not None:
         os.rename(dl_dir + file_name, dl_dir + new_file_name)
