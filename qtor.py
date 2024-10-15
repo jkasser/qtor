@@ -331,6 +331,7 @@ def _process_file(cfg, hash):
                     if tag == 'movie' or not likely_tv:
                         if not likely_tv:
                             logger.info("File was not tagged, it looks like it is most likely a Movie.")
+                            _tag_movie(tor["hash"])
                         else:
                             logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {movie_dir}")
@@ -338,6 +339,7 @@ def _process_file(cfg, hash):
                     elif tag == 'tv' or likely_tv:
                         if likely_tv:
                             logger.info("File was not tagged, it looks like it is most likely a TV Show.")
+                            _tag_tv(tor["hash"])
                         else:
                             logger.info(f"File was tagged as {tag}.")
                         logger.info(f"Moving file to {tv_dir}")
